@@ -1,0 +1,12 @@
+model\Task.class
+view\MainApp$1.class
+controller\SubjectController.class
+model\Subject.class
+view\MainApp$4.class
+controller\UserController.class
+controller\TaskController.class
+view\MainApp$2.class
+util\DatabaseConnection.class
+view\MainApp.class
+view\MainApp$3.class
+model\User.class
