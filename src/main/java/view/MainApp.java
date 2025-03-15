@@ -56,7 +56,7 @@ public class MainApp extends Application {
                 loginStage.close();
                 showMainWindow(primaryStage);
             } else {
-                Alert alert = new Alert(Alert.AlertType.ERROR, "Sai tên đăng nhập hoặc mật khẩu!");
+                Alert alert = new Alert(Alert.AlertType.ERROR, "Sai tên đăng nhập hoặc mật khẩu! Vui lòng thử lại.");
                 alert.show();
             }
         });
@@ -117,7 +117,6 @@ public class MainApp extends Application {
     }
 
     private void showMainWindow(Stage primaryStage) {
-        // Tạo bảng công việc
         TableColumn<Task, Integer> sttCol = new TableColumn<>("STT");
         sttCol.setCellValueFactory(cellData -> {
             int rowIndex = taskTable.getItems().indexOf(cellData.getValue()) + 1;
@@ -161,9 +160,9 @@ public class MainApp extends Application {
         TableColumn<Task, String> deadlineStatusCol = new TableColumn<>("Cách hạn chót");
         deadlineStatusCol.setCellValueFactory(cellData -> {
             Task task = cellData.getValue();
-            String status = task.getStatus() != null ? task.getStatus() : "Chua lam";
-            if (status.equals("Đa hoan thanh")) {
-                return new javafx.beans.property.SimpleStringProperty("Xong");
+            String status = task.getStatus() != null ? task.getStatus() : "Chưa làm";
+            if (status.equals("Da hoan thanh")) {
+                return new javafx.beans.property.SimpleStringProperty("XONG");
             } else if (task.getDeadline() == null) {
                 return new javafx.beans.property.SimpleStringProperty("Không xác định");
             } else {
@@ -186,14 +185,14 @@ public class MainApp extends Application {
                 } else {
                     setText(item);
                     setFont(Font.font("Arial", 14));
-                    if (item.equals("Xong")) {
-                        setStyle("-fx-text-fill: #00CC00;"); // Xanh lá đậm cho "Xong"
+                    if (item.equals("XONG")) {
+                        setStyle("-fx-text-fill: #00CC00;");
                     } else if (item.startsWith("Đến hạn")) {
-                        setStyle("-fx-text-fill: #0066CC;"); // Xanh dương dịu cho đến hạn
+                        setStyle("-fx-text-fill: #0066CC;");
                     } else if (item.startsWith("Quá hạn")) {
-                        setStyle("-fx-text-fill: #CC0000;"); // Đỏ dịu cho quá hạn
+                        setStyle("-fx-text-fill: #CC0000;");
                     } else {
-                        setStyle("-fx-text-fill: #666666;"); // Xám cho "Không xác định"
+                        setStyle("-fx-text-fill: #666666;");
                     }
                 }
             }
@@ -201,7 +200,6 @@ public class MainApp extends Application {
 
         taskTable.getColumns().addAll(sttCol, nameCol, descCol, deadlineCol, priorityCol, statusCol, subjectCol, deadlineStatusCol);
 
-        // Tô màu dựa trên trạng thái
         taskTable.setRowFactory(tv -> new TableRow<Task>() {
             @Override
             public void updateItem(Task task, boolean empty) {
@@ -209,7 +207,7 @@ public class MainApp extends Application {
                 if (task == null || empty) {
                     setStyle("");
                 } else {
-                    String status = task.getStatus() != null ? task.getStatus() : "Chua lam";
+                    String status = task.getStatus() != null ? task.getStatus() : "Chưa làm";
                     switch (status) {
                         case "Chua lam":
                             setStyle("-fx-background-color: #FF9999;");
@@ -227,17 +225,19 @@ public class MainApp extends Application {
             }
         });
 
-        // Tải dữ liệu
         tasks = FXCollections.observableArrayList(taskController.getTasksByUser(currentUser.getUserId()));
         taskTable.setItems(tasks);
 
-        // Đặt bảng trong ScrollPane để có thanh trượt
+        if (tasks.isEmpty()) {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION, "Không có công việc nào để hiển thị. Hãy thêm công việc mới!");
+            alert.showAndWait();
+        }
+
         ScrollPane scrollPane = new ScrollPane(taskTable);
         scrollPane.setFitToHeight(true);
         scrollPane.setFitToWidth(true);
         scrollPane.setStyle("-fx-background-color: #FFFFFF; -fx-border-color: #D3D3D3; -fx-border-radius: 5;");
 
-        // Tùy chỉnh các nút
         HBox buttonPane = new HBox(15);
         buttonPane.setPadding(new Insets(15));
         buttonPane.setStyle("-fx-background-color: #F5F5F5; -fx-border-color: #D3D3D3; -fx-border-radius: 5;");
@@ -267,7 +267,12 @@ public class MainApp extends Application {
         completeButton.setFont(Font.font("Arial", 18));
         completeButton.setStyle("-fx-background-color: #FF9800; -fx-text-fill: white; -fx-padding: 15; -fx-background-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 5, 0, 2, 2);");
 
-        buttonPane.getChildren().addAll(addTaskButton, addSubjectButton, editButton, deleteButton, completeButton);
+        Button statsButton = new Button("Thống Kê");
+        statsButton.setPrefSize(200, 60);
+        statsButton.setFont(Font.font("Arial", 18));
+        statsButton.setStyle("-fx-background-color: #00BCD4; -fx-text-fill: white; -fx-padding: 15; -fx-background-radius: 15; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 5, 0, 2, 2);");
+
+        buttonPane.getChildren().addAll(addTaskButton, addSubjectButton, editButton, deleteButton, completeButton, statsButton);
 
         addTaskButton.setOnAction(e -> {
             if (subjectController.getAllSubjects().isEmpty()) {
@@ -314,19 +319,25 @@ public class MainApp extends Application {
         completeButton.setOnAction(e -> {
             Task selected = taskTable.getSelectionModel().getSelectedItem();
             if (selected != null) {
-                // Cập nhật trạng thái ngay trong đối tượng Task
-                selected.setStatus("Đã hoàn thành");
-                taskController.markAsCompleted(selected.getTaskId());
-                // Làm mới bảng để hiển thị "Xong" ngay lập tức
-                taskTable.refresh();
-                Alert alert = new Alert(Alert.AlertType.INFORMATION, "Đã đánh dấu hoàn thành công việc '" + selected.getTaskName() + "'!");
-                alert.show();
-                // Đồng bộ với cơ sở dữ liệu
-                tasks.setAll(taskController.getTasksByUser(currentUser.getUserId()));
+                if (selected.getStatus() != null && selected.getStatus().equals("Đã hoàn thành")) {
+                    Alert alert = new Alert(Alert.AlertType.WARNING, "Công việc này đã được hoàn thành rồi!");
+                    alert.show();
+                } else {
+                    selected.setStatus("Đã hoàn thành");
+                    taskController.markAsCompleted(selected.getTaskId());
+                    tasks.setAll(taskController.getTasksByUser(currentUser.getUserId()));
+                    taskTable.refresh();
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION, "Đã đánh dấu hoàn thành công việc '" + selected.getTaskName() + "'!");
+                    alert.show();
+                }
             } else {
                 Alert alert = new Alert(Alert.AlertType.WARNING, "Chọn một công việc để đánh dấu hoàn thành!");
                 alert.show();
             }
+        });
+
+        statsButton.setOnAction(e -> {
+            showStatsWindow();
         });
 
         VBox root = new VBox(10, scrollPane, buttonPane);
@@ -336,31 +347,58 @@ public class MainApp extends Application {
         primaryStage.setTitle("Quản Lý Công Việc - " + (currentUser != null ? currentUser.getUsername() : "Khách"));
         primaryStage.setScene(scene);
         primaryStage.show();
-
-        // Kiểm tra công việc quá hạn
-        checkOverdueTasks();
     }
 
-    private void checkOverdueTasks() {
-        StringBuilder overdueMessage = new StringBuilder("Công việc quá hạn cần làm ngay:\n");
-        boolean hasOverdue = false;
+    private void showStatsWindow() {
+        Stage statsStage = new Stage();
+        VBox statsPane = new VBox(15);
+        statsPane.setPadding(new Insets(20));
+        statsPane.setStyle("-fx-background-color: #F9F9F9; -fx-border-color: #E0E0E0; -fx-border-radius: 5;");
+
+        int totalTasks = tasks.size();
+        int chuaLamCount = 0;
+        int dangLamCount = 0;
+        int daHoanThanhCount = 0;
 
         for (Task task : tasks) {
-            if (task.getDeadline() != null && task.getDeadline().isBefore(LocalDate.now()) && 
-                (task.getStatus() == null || !task.getStatus().equals("Đã hoàn thành"))) {
-                overdueMessage.append("- ").append(task.getTaskName()).append(" (Hạn: ")
-                              .append(task.getDeadline()).append(")\n");
-                hasOverdue = true;
+            String status = task.getStatus() != null ? task.getStatus() : "Chưa làm";
+            switch (status) {
+                case "Chua lam":
+                    chuaLamCount++;
+                    break;
+                case "Dang lam":
+                    dangLamCount++;
+                    break;
+                case "Da hoan thanh":
+                    daHoanThanhCount++;
+                    break;
             }
         }
 
-        if (hasOverdue) {
-            Alert alert = new Alert(Alert.AlertType.WARNING, overdueMessage.toString());
-            alert.showAndWait();
-        } else {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION, "Không có công việc nào quá hạn.");
-            alert.showAndWait();
-        }
+        double chuaLamPercent = chuaLamCount ;
+        double dangLamPercent = dangLamCount;
+        double daHoanThanhPercent = daHoanThanhCount;
+
+        Label statsLabel = new Label("Thống Kê Công Việc:\n" +
+            "Chưa làm: " + String.format("%.2f", chuaLamPercent) + " (" + chuaLamCount + " công việc)\n" +
+            "Đang làm: " + String.format("%.2f", dangLamPercent) + " (" + dangLamCount + " công việc)\n" +
+            "Đã hoàn thành: " + String.format("%.2f", daHoanThanhPercent) + " (" + daHoanThanhCount + " công việc)\n" +
+            "Tổng số công việc: " + totalTasks);
+        statsLabel.setFont(Font.font("Arial", 14));
+
+        Button closeButton = new Button("Đóng");
+        closeButton.setPrefSize(100, 40);
+        closeButton.setFont(Font.font("Arial", 14));
+        closeButton.setStyle("-fx-background-color: #F44336; -fx-text-fill: white; -fx-padding: 10; -fx-background-radius: 10;");
+
+        closeButton.setOnAction(e -> statsStage.close());
+
+        statsPane.getChildren().addAll(statsLabel, closeButton);
+
+        Scene statsScene = new Scene(statsPane, 350, 200);
+        statsStage.setScene(statsScene);
+        statsStage.setTitle("Thống Kê Công Việc");
+        statsStage.show();
     }
 
     private void showAddTaskWindow(ObservableList<Task> tasks) {
@@ -387,7 +425,7 @@ public class MainApp extends Application {
 
         ComboBox<String> statusComboBox = new ComboBox<>();
         statusComboBox.setPromptText("Chọn trạng thái");
-        ObservableList<String> statuses = FXCollections.observableArrayList("Chưa làm", "Đang làm", "Đã hoàn thành");
+        ObservableList<String> statuses = FXCollections.observableArrayList("Chưa làm", "Đang làm");
         statusComboBox.setItems(statuses);
         statusComboBox.setValue("Chưa làm");
         statusComboBox.setStyle("-fx-font-size: 14pt;");
